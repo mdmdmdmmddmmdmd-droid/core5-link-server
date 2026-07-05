@@ -1,0 +1,13 @@
+{
+  "name": "core5-custom-link-system",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Личная система ссылок для Core5 Mod / Пузыри",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
