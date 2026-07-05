@@ -1,13 +1,9 @@
 {
-  "name": "core5-vercel-lite-link-system",
+  "name": "core5-vercel-redirect-link-system",
   "version": "1.0.0",
   "private": true,
-  "description": "Личная система ссылок Core5 Mod для Vercel без карты",
+  "description": "Core5 Mod ссылки с редиректом в игру для Vercel",
   "main": "server.js",
-  "scripts": {
-    "start": "node server.js"
-  },
-  "engines": {
-    "node": ">=18"
-  }
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=18" }
 }

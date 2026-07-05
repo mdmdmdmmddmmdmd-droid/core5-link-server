@@ -1,6 +1,6 @@
 "use strict";
 
-// Core5 Vercel Lite Link System
+// Core5 Vercel Redirect Link System
 // Работает на Vercel без карты и без базы данных.
 // Важно: ссылки живут всегда, потому что данные зашиты в slug.
 // Статистика кликов хранится в памяти serverless-функции и может обнуляться после перезапуска Vercel.
@@ -12,7 +12,8 @@ const { URL } = require("url");
 const PORT = Number(process.env.PORT || 3000);
 const BASE_URL = String(process.env.BASE_URL || process.env.VERCEL_URL || `http://localhost:${PORT}`).replace(/^https?:\/\//, "");
 const PUBLIC_BASE_URL = String(process.env.BASE_URL || (process.env.VERCEL_URL ? `https://${BASE_URL}` : `http://localhost:${PORT}`)).replace(/\/+$/, "");
-const GAME_URL = String(process.env.GAME_URL || "").trim();
+const GAME_URL = String(process.env.GAME_URL || "https://www.puziri.net/").trim();
+const SHOW_LINK_PAGE_PARAM = "info";
 
 const mem = global.__CORE5_LINK_MEM__ || (global.__CORE5_LINK_MEM__ = { links: {}, clicks: {} });
 
@@ -130,13 +131,39 @@ function recordClick(slug, link, req) {
   if (arr.length > 50) arr.length = 50;
 }
 
+
+function buildGameTarget(link, slug) {
+  const ownerId = safeId(link.ownerId);
+  let base = String(GAME_URL || "https://www.puziri.net/").trim();
+  if (!base) base = "https://www.puziri.net/";
+  try {
+    const u = new URL(base);
+    // Не добавляем параметры в query, чтобы сервер игры не ругался на лишние права.
+    const hash = u.hash && u.hash.length > 1 ? u.hash.slice(1) + "&" : "";
+    u.hash = hash + "core5_ref=" + encodeURIComponent(ownerId) + "&core5_link=" + encodeURIComponent(slug) + "&core5_src=custom";
+    return u.toString();
+  } catch (e) {
+    return "https://www.puziri.net/#core5_ref=" + encodeURIComponent(ownerId) + "&core5_link=" + encodeURIComponent(slug) + "&core5_src=custom";
+  }
+}
+
+function redirectToGame(res, link, slug) {
+  const target = buildGameTarget(link, slug);
+  res.writeHead(302, {
+    "Location": target,
+    "Cache-Control": "no-store",
+    "Access-Control-Allow-Origin": "*"
+  });
+  res.end("Redirecting to " + target);
+}
+
 function landingFor(link, slug) {
   const ownerId = safeId(link.ownerId);
   const label = safeText(link.label || "Пузыри", 80);
   const linkUrl = `${PUBLIC_BASE_URL}/l/${encodeURIComponent(slug)}`;
   const stats = mem.links[slug] || { clicks: 0, lastClickAt: null };
-  const target = GAME_URL ? `${GAME_URL}${GAME_URL.includes("#") ? "&" : "#"}core5_ref=${encodeURIComponent(ownerId)}&core5_link=${encodeURIComponent(slug)}` : "";
-  const gameButton = target ? `<a class="btn green" href="${escapeHtml(target)}">Открыть игру</a>` : `<button class="btn gray" onclick="copyText('ID аккаунта/шара: #${escapeHtml(ownerId)}')">Скопировать ID</button>`;
+  const target = buildGameTarget(link, slug);
+  const gameButton = `<a class="btn green" href="${escapeHtml(target)}">Открыть игру</a>`;
   return page("Core5 Link", `<h1>🫧 Core5 личная ссылка</h1><p>Это твоя собственная страница ссылки. Она не использует VK/OK и не передаёт чужую сессию.</p><div class="box"><div class="muted">Метка</div><div style="font-size:20px;font-weight:900">${escapeHtml(label)}</div><div class="muted" style="margin-top:10px">ID аккаунта/шара</div><div class="big">#${escapeHtml(ownerId)}</div><div class="muted">Переходов в текущей сессии сервера: ${Number(stats.clicks || 0)}</div><div class="muted">Последний переход: ${escapeHtml(stats.lastClickAt || "пока нет")}</div></div><div class="box warn"><b>Важно:</b> на бесплатном Vercel без базы статистика может обнуляться после перезапуска. Сама ссылка продолжит работать, потому что ID зашит в код ссылки.</div><div class="row">${gameButton}<button class="btn" onclick="copyText('${escapeHtml(linkUrl)}')">Скопировать ссылку</button><button class="btn gray" onclick="copyText('#${escapeHtml(ownerId)}')">Скопировать ID</button></div><p class="muted">Ссылка: <code>${escapeHtml(linkUrl)}</code></p><script>function copyText(t){navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.writeText(t).then(()=>alert('Скопировано')):prompt('Скопируй:',t)}try{localStorage.setItem('__CORE5_INCOMING_REF__','${escapeHtml(ownerId)}');localStorage.setItem('__CORE5_INCOMING_LINK__','${escapeHtml(slug)}')}catch(e){}</script>`);
 }
 
@@ -148,7 +175,7 @@ async function handle(req, res) {
   if (pathname === "/health") return sendJson(res, 200, { ok: true, vercelLite: true, baseUrl: PUBLIC_BASE_URL, gameUrlConfigured: !!GAME_URL });
 
   if (pathname === "/") {
-    return send(res, 200, page("Core5 Vercel Link System", `<h1>🫧 Core5 Vercel Link System</h1><p>Сервер работает. Укажи этот адрес в меню мода как <b>Сервер ссылок</b>:</p><div class="box"><input readonly value="${escapeHtml(PUBLIC_BASE_URL)}" onclick="this.select()"></div><p>API: <code>POST /api/links</code>, открытие: <code>/l/код</code>, статистика: <code>/api/links/код/stats</code></p><div class="box warn"><b>Безопасно:</b> это не вход в чужой аккаунт. Это личная страница ссылки + ID + счётчик текущей serverless-сессии.</div>`));
+    return send(res, 200, page("Core5 Vercel Link System", `<h1>🫧 Core5 Vercel Link System</h1><p>Сервер работает. Укажи этот адрес в меню мода как <b>Сервер ссылок</b>:</p><div class="box"><input readonly value="${escapeHtml(PUBLIC_BASE_URL)}" onclick="this.select()"></div><p>API: <code>POST /api/links</code>, открытие с редиректом в игру: <code>/l/код</code>, карточка ссылки: <code>/card/код</code>, статистика: <code>/api/links/код/stats</code></p><div class="box warn"><b>Безопасно:</b> это не вход в чужой аккаунт. Ссылка /l/код делает редирект в игру и считает переходы. Это не вход в чужой аккаунт.</div>`));
   }
 
   if (pathname === "/api/links" && req.method === "POST") {
@@ -159,7 +186,7 @@ async function handle(req, res) {
       const slug = makeSlug(ownerId, label);
       const createdAt = new Date().toISOString();
       mem.links[slug] = { slug, ownerId, label, clicks: 0, createdAt, lastClickAt: null };
-      return sendJson(res, 200, { ok: true, slug, ownerId, label, url: `${PUBLIC_BASE_URL}/l/${slug}`, statsUrl: `${PUBLIC_BASE_URL}/api/links/${slug}/stats`, vercelLite: true });
+      return sendJson(res, 200, { ok: true, slug, ownerId, label, url: `${PUBLIC_BASE_URL}/l/${slug}`, cardUrl: `${PUBLIC_BASE_URL}/card/${slug}`, statsUrl: `${PUBLIC_BASE_URL}/api/links/${slug}/stats`, redirectMode: true, vercelLite: true });
     } catch (e) {
       return sendJson(res, 400, { ok: false, error: e.message || "Bad request" });
     }
@@ -180,6 +207,15 @@ async function handle(req, res) {
     const decoded = decodeSlug(slug);
     if (!decoded) return send(res, 404, page("Не найдено", "<h1>Ссылка не найдена</h1><p>Проверь код ссылки.</p>"));
     recordClick(slug, decoded, req);
+    if (url.searchParams.get(SHOW_LINK_PAGE_PARAM) === "1") return send(res, 200, landingFor(decoded, slug));
+    return redirectToGame(res, decoded, slug);
+  }
+
+  const cardMatch = pathname.match(/^\/card\/([A-Za-z0-9_-]+)$/);
+  if (cardMatch && req.method === "GET") {
+    const slug = cardMatch[1];
+    const decoded = decodeSlug(slug);
+    if (!decoded) return send(res, 404, page("Не найдено", "<h1>Ссылка не найдена</h1><p>Проверь код ссылки.</p>"));
     return send(res, 200, landingFor(decoded, slug));
   }
 
@@ -189,7 +225,7 @@ async function handle(req, res) {
     const slug = makeSlug(ownerId, "Прямая ссылка ID");
     const temp = { ownerId, label: "Прямая ссылка ID", createdAt: new Date().toISOString() };
     recordClick(slug, temp, req);
-    return send(res, 200, landingFor(temp, slug));
+    return redirectToGame(res, temp, slug);
   }
 
   return send(res, 404, page("404", "<h1>404</h1><p>Такой страницы нет.</p>"));
@@ -203,6 +239,6 @@ module.exports = handler;
 
 if (require.main === module) {
   http.createServer(handler).listen(PORT, () => {
-    console.log(`[Core5 Vercel Lite Link System] running on ${PUBLIC_BASE_URL}`);
+    console.log(`[Core5 Vercel Redirect Link System] running on ${PUBLIC_BASE_URL}`);
   });
 }
