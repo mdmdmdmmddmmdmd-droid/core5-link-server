@@ -1,8 +1,8 @@
 {
-  "name": "core5-custom-link-system",
+  "name": "core5-vercel-lite-link-system",
   "version": "1.0.0",
   "private": true,
-  "description": "Личная система ссылок для Core5 Mod / Пузыри",
+  "description": "Личная система ссылок Core5 Mod для Vercel без карты",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
