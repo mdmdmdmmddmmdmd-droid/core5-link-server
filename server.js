@@ -1,6 +1,6 @@
 "use strict";
 
-// Core5 Vercel Redirect Link System
+// Core5 Vercel Redirect Link System v19 PUZIRI ONLY
 // Работает на Vercel без карты и без базы данных.
 // Важно: ссылки живут всегда, потому что данные зашиты в slug.
 // Статистика кликов хранится в памяти serverless-функции и может обнуляться после перезапуска Vercel.
@@ -12,7 +12,7 @@ const { URL } = require("url");
 const PORT = Number(process.env.PORT || 3000);
 const BASE_URL = String(process.env.BASE_URL || process.env.VERCEL_URL || `http://localhost:${PORT}`).replace(/^https?:\/\//, "");
 const PUBLIC_BASE_URL = String(process.env.BASE_URL || (process.env.VERCEL_URL ? `https://${BASE_URL}` : `http://localhost:${PORT}`)).replace(/\/+$/, "");
-const GAME_URL = String(process.env.GAME_URL || "https://www.puziri.net/").trim();
+const GAME_URL = "https://www.puziri.net/"; // v19: принудительно только Пузыри, не GitHub/не чужой сайт
 const SHOW_LINK_PAGE_PARAM = "info";
 
 const mem = global.__CORE5_LINK_MEM__ || (global.__CORE5_LINK_MEM__ = { links: {}, clicks: {} });
@@ -91,6 +91,12 @@ function send(res, status, body, type = "text/html; charset=utf-8") {
 
 function sendJson(res, status, data) {
   send(res, status, JSON.stringify(data, null, 2), "application/json; charset=utf-8");
+}
+
+function getRequestBaseUrl(req) {
+  const proto = (req.headers["x-forwarded-proto"] || "https").split(",")[0].trim() || "https";
+  const host = req.headers["x-forwarded-host"] || req.headers.host || BASE_URL;
+  return `${proto}://${String(host).replace(/\/+$/, "")}`;
 }
 
 function readBody(req) {
@@ -172,10 +178,10 @@ async function handle(req, res) {
   const url = new URL(req.url, PUBLIC_BASE_URL);
   const pathname = decodeURIComponent(url.pathname);
 
-  if (pathname === "/health") return sendJson(res, 200, { ok: true, vercelLite: true, baseUrl: PUBLIC_BASE_URL, gameUrlConfigured: !!GAME_URL });
+  if (pathname === "/health") return sendJson(res, 200, { ok: true, vercelLite: true, baseUrl: PUBLIC_BASE_URL, gameUrl: GAME_URL, puziriOnly: true });
 
   if (pathname === "/") {
-    return send(res, 200, page("Core5 Vercel Link System", `<h1>🫧 Core5 Vercel Link System</h1><p>Сервер работает. Укажи этот адрес в меню мода как <b>Сервер ссылок</b>:</p><div class="box"><input readonly value="${escapeHtml(PUBLIC_BASE_URL)}" onclick="this.select()"></div><p>API: <code>POST /api/links</code>, открытие с редиректом в игру: <code>/l/код</code>, карточка ссылки: <code>/card/код</code>, статистика: <code>/api/links/код/stats</code></p><div class="box warn"><b>Безопасно:</b> это не вход в чужой аккаунт. Ссылка /l/код делает редирект в игру и считает переходы. Это не вход в чужой аккаунт.</div>`));
+    return send(res, 200, page("Core5 Vercel Link System", `<h1>🫧 Core5 Vercel Link System</h1><p>Сервер работает. Укажи этот адрес в меню мода как <b>Сервер ссылок</b>:</p><div class="box"><input readonly value="${escapeHtml(getRequestBaseUrl(req))}" onclick="this.select()"></div><p>API: <code>POST /api/links</code>, открытие с редиректом в игру: <code>/l/код</code>, карточка ссылки: <code>/card/код</code>, статистика: <code>/api/links/код/stats</code></p><div class="box warn"><b>Безопасно:</b> это не вход в чужой аккаунт. Ссылка /l/код делает редирект в игру и считает переходы. Это не вход в чужой аккаунт.</div>`));
   }
 
   if (pathname === "/api/links" && req.method === "POST") {
@@ -186,7 +192,7 @@ async function handle(req, res) {
       const slug = makeSlug(ownerId, label);
       const createdAt = new Date().toISOString();
       mem.links[slug] = { slug, ownerId, label, clicks: 0, createdAt, lastClickAt: null };
-      return sendJson(res, 200, { ok: true, slug, ownerId, label, url: `${PUBLIC_BASE_URL}/l/${slug}`, cardUrl: `${PUBLIC_BASE_URL}/card/${slug}`, statsUrl: `${PUBLIC_BASE_URL}/api/links/${slug}/stats`, redirectMode: true, vercelLite: true });
+      return sendJson(res, 200, { ok: true, slug, ownerId, label, url: `${getRequestBaseUrl(req)}/l/${slug}`, cardUrl: `${getRequestBaseUrl(req)}/card/${slug}`, statsUrl: `${getRequestBaseUrl(req)}/api/links/${slug}/stats`, redirectMode: true, vercelLite: true });
     } catch (e) {
       return sendJson(res, 400, { ok: false, error: e.message || "Bad request" });
     }
@@ -239,6 +245,6 @@ module.exports = handler;
 
 if (require.main === module) {
   http.createServer(handler).listen(PORT, () => {
-    console.log(`[Core5 Vercel Redirect Link System] running on ${PUBLIC_BASE_URL}`);
+    console.log(`[Core5 Vercel Redirect Link System v19 PUZIRI ONLY] running on ${PUBLIC_BASE_URL}`);
   });
 }

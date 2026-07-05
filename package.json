@@ -1,9 +1,13 @@
 {
-  "name": "core5-vercel-redirect-link-system",
+  "name": "core5-vercel-puziri-only-link-system",
   "version": "1.0.0",
   "private": true,
-  "description": "Core5 Mod ссылки с редиректом в игру для Vercel",
+  "description": "Core5 Mod ссылки для Vercel с принудительным редиректом только в Пузыри",
   "main": "server.js",
-  "scripts": { "start": "node server.js" },
-  "engines": { "node": ">=18" }
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
 }
