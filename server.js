@@ -1,6 +1,6 @@
 "use strict";
 
-// Core5 Vercel Bridge Link System v20
+// Core5 Vercel Bridge Link System v21
 // Работает на Vercel без карты и без базы данных.
 // Важно: ссылки живут всегда, потому что данные зашиты в slug.
 // Статистика кликов хранится в памяти serverless-функции и может обнуляться после перезапуска Vercel.
@@ -12,7 +12,7 @@ const { URL } = require("url");
 const PORT = Number(process.env.PORT || 3000);
 const BASE_URL = String(process.env.BASE_URL || process.env.VERCEL_URL || `http://localhost:${PORT}`).replace(/^https?:\/\//, "");
 const PUBLIC_BASE_URL = String(process.env.BASE_URL || (process.env.VERCEL_URL ? `https://${BASE_URL}` : `http://localhost:${PORT}`)).replace(/\/+$/, "");
-const GAME_URL = "https://www.puziri.net/"; // v20: только как необязательная кнопка, без автоматического редиректа
+const GAME_URL = ""; // v21: прямой запуск игры отключён, чтобы не открывать ошибку "нет прав"
 const SHOW_LINK_PAGE_PARAM = "info";
 
 const mem = global.__CORE5_LINK_MEM__ || (global.__CORE5_LINK_MEM__ = { links: {}, clicks: {} });
@@ -181,7 +181,7 @@ function landingFor(link, slug, opts = {}) {
   <button class="btn" onclick="copyText('#${escapeHtml(ownerId)}')">Скопировать ID</button>
   <button class="btn" onclick="copyText('${escapeHtml(linkUrl)}')">Скопировать ссылку</button>
   <a class="btn gray" href="${escapeHtml(cardUrl)}">Открыть карточку</a>
-  <a class="btn green" href="/go/${encodeURIComponent(slug)}" title="Не гарантируется: сайт игры может снова показать нет прав">Попробовать открыть сайт игры</a>
+  <button class="btn green" onclick="alert('Прямой вход в игру отключён: сайт puziri.net показывает «нет прав» без обычной авторизации. Зайди в игру своим способом и используй ID.')">Как зайти в игру</button>
 </div>
 <p class="muted">Ссылка: <code>${escapeHtml(linkUrl)}</code></p>
 <script>function copyText(t){navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.writeText(t).then(()=>alert('Скопировано')):prompt('Скопируй:',t)}try{localStorage.setItem('__CORE5_INCOMING_REF__','${escapeHtml(ownerId)}');localStorage.setItem('__CORE5_INCOMING_LINK__','${escapeHtml(slug)}')}catch(e){}</script>`);
@@ -205,7 +205,7 @@ async function handle(req, res) {
   if (pathname === "/health") return sendJson(res, 200, { ok: true, vercelLite: true, baseUrl: PUBLIC_BASE_URL, gameUrl: GAME_URL, puziriOnly: true });
 
   if (pathname === "/") {
-    return send(res, 200, page("Core5 Vercel Link System", `<h1>🫧 Core5 Vercel Link System</h1><p>Сервер работает. Укажи этот адрес в меню мода как <b>Сервер ссылок</b>:</p><div class="box"><input readonly value="${escapeHtml(getRequestBaseUrl(req))}" onclick="this.select()"></div><p>API: <code>POST /api/links</code>, страница-переходник: <code>/l/код</code>, карточка ссылки: <code>/card/код</code>, попытка открыть сайт игры: <code>/go/код</code>, статистика: <code>/api/links/код/stats</code></p><div class="box warn"><b>Безопасно:</b> это не вход в чужой аккаунт. Ссылка /l/код показывает ID, инструкцию и считает переходы. Это не вход в чужой аккаунт.</div>`));
+    return send(res, 200, page("Core5 Vercel Link System", `<h1>🫧 Core5 Vercel Link System</h1><p>Сервер работает. Укажи этот адрес в меню мода как <b>Сервер ссылок</b>:</p><div class="box"><input readonly value="${escapeHtml(getRequestBaseUrl(req))}" onclick="this.select()"></div><p>API: <code>POST /api/links</code>, страница-переходник: <code>/l/код</code>, карточка ссылки: <code>/card/код</code>, инструкция без прямого входа: <code>/go/код</code>, статистика: <code>/api/links/код/stats</code></p><div class="box warn"><b>Безопасно:</b> это не вход в чужой аккаунт. Ссылка /l/код показывает ID, инструкцию и считает переходы. Прямой запуск игры отключён, потому что puziri.net без авторизации показывает «нет прав».</div>`));
   }
 
   if (pathname === "/api/links" && req.method === "POST") {
@@ -254,7 +254,7 @@ async function handle(req, res) {
     const decoded = decodeSlug(slug);
     if (!decoded) return send(res, 404, page("Не найдено", "<h1>Ссылка не найдена</h1><p>Проверь код ссылки.</p>"));
     recordClick(slug, decoded, req);
-    return redirectToGame(res, decoded, slug);
+    return send(res, 200, landingFor(decoded, slug));
   }
 
   const directMatch = pathname.match(/^\/p\/([A-Za-z0-9_-]+)$/);
@@ -277,6 +277,6 @@ module.exports = handler;
 
 if (require.main === module) {
   http.createServer(handler).listen(PORT, () => {
-    console.log(`[Core5 Vercel Bridge Link System v20] running on ${PUBLIC_BASE_URL}`);
+    console.log(`[Core5 Vercel Bridge Link System v21] running on ${PUBLIC_BASE_URL}`);
   });
 }
