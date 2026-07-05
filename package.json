@@ -1,8 +1,8 @@
 {
-  "name": "core5-vercel-puziri-only-link-system",
-  "version": "1.0.0",
+  "name": "core5-vercel-bridge-link-system",
+  "version": "2.0.0",
   "private": true,
-  "description": "Core5 Mod ссылки для Vercel с принудительным редиректом только в Пузыри",
+  "description": "Core5 Mod ссылки для Vercel: страница-переходник с ID и статистикой без прямого входа в аккаунт",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
